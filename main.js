@@ -8,6 +8,7 @@ import { EventStore } from './event-store.js';
 import { SettingsStore } from './settings-store.js';
 import { SecureStore } from './drive/secure-store.js';
 import { DriveClient } from './drive/client.js';
+import { acquireHostLock } from './host-lock.js';
 
 const root = import.meta.dirname;
 const entry = join(root, 'dist', 'index.html');
@@ -18,6 +19,7 @@ let drive;
 let editorReady = false;
 let closeRequest = null;
 let allowWindowClose = false;
+let releaseHostLock;
 const supportsAcrylic = process.platform === 'win32' && Number(release().split('.')[2]) >= 22621;
 
 function updateWindowAppearance() {
@@ -67,20 +69,22 @@ function registerSettings() {
         event.senderFrame === event.sender.mainFrame && event.senderFrame.url === pathToFileURL(entry).href;
     for (const [channel, action] of [
         ['settings:get', () => settingsStore.get()],
+        ['settings:set-runtime', runtime => settingsStore.setRuntime(runtime)],
         ['settings:set-theme', async theme => {
             const settings = await settingsStore.setTheme(theme);
             nativeTheme.themeSource = settings.theme;
             updateWindowAppearance();
-            for (const window of BrowserWindow.getAllWindows()) {
-                window.webContents.send('settings:changed', settings);
-            }
             return settings;
         }]
     ]) {
         ipcMain.handle(channel, async (event, value) => {
             if (!trusted(event)) return { ok: false, error: 'This window cannot access settings.' };
             try {
-                return { ok: true, settings: await action(value) };
+                const settings = await action(value);
+                if (channel !== 'settings:get') {
+                    for (const window of BrowserWindow.getAllWindows()) window.webContents.send('settings:changed', settings);
+                }
+                return { ok: true, settings };
             } catch (error) {
                 return { ok: false, error: error.message || 'Your settings could not be saved. Please try again.' };
             }
@@ -175,6 +179,14 @@ if (!app.requestSingleInstanceLock()) {
         }
     });
     app.whenReady().then(async () => {
+        if (process.platform === 'win32') {
+            releaseHostLock = await acquireHostLock(app.getPath('userData'), () => {
+                if (!mainWindow) return;
+                if (mainWindow.isMinimized()) mainWindow.restore();
+                mainWindow.focus();
+            });
+            if (!releaseHostLock) { app.quit(); return; }
+        }
         nativeTheme.themeSource = 'system';
         settingsStore = new SettingsStore(join(app.getPath('userData'), 'settings.json'));
         try {
@@ -200,9 +212,13 @@ if (!app.requestSingleInstanceLock()) {
         app.on('activate', () => {
             if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
         });
+    }).catch(error => {
+        dialog.showErrorBox('Calendar could not open', error.message);
+        app.quit();
     });
     app.on('window-all-closed', () => {
         if (process.platform !== 'darwin') app.quit();
     });
     app.on('before-quit', () => drive?.cancelConnect());
+    app.on('will-quit', () => { releaseHostLock?.(); });
 }

@@ -1,4 +1,7 @@
 node_modules/
+native/bin/
+native/packages/
+dist/.build-hash
 .test-artifacts/
 *.log
 # Google OAuth downloads and local credentials must stay out of source control.

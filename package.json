@@ -9,9 +9,12 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "test:smoke": "npm run build && node tests/run-smoke.js",
-    "build": "vite build",
-    "prestart": "npm run build",
-    "start": "electron ."
+    "build": "node build-renderer.js",
+    "build:native": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/build.ps1",
+    "start": "node launcher.js",
+    "start:electron": "node launcher.js --electron",
+    "test:smoke:webview": "node tests/webview-smoke.js",
+    "test:smoke:visible": "node tests/visible-launch.js"
   },
   "devDependencies": {
     "electron": "^45.1.0"

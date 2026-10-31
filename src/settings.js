@@ -1,17 +1,25 @@
 const $ = id => document.getElementById(id);
 const dialog = $('settings-dialog');
 const controls = $('theme-options');
+const runtimeControls = $('runtime-options');
 let busy = false;
-let selectedTheme = 'system';
+let selected = { theme: 'system', runtime: 'electron' };
+
+if (window.settingsAPI?.supportsSystemWebView === false) {
+    runtimeControls.querySelector('[value="webview"]').disabled = true;
+    $('runtime-note').textContent = 'System WebView is available on Windows.';
+}
 
 function reflect(settings) {
-    selectedTheme = settings.theme;
-    for (const input of controls.querySelectorAll('input')) input.checked = input.value === selectedTheme;
+    selected = settings;
+    for (const input of controls.querySelectorAll('input')) input.checked = input.value === selected.theme;
+    for (const input of runtimeControls.querySelectorAll('input')) input.checked = input.value === selected.runtime;
 }
 
 function setBusy(value) {
     busy = value;
     controls.disabled = value;
+    runtimeControls.disabled = value;
     for (const id of ['close-settings', 'done-settings', 'retry-settings']) $(id).disabled = value;
     dialog.setAttribute('aria-busy', String(value));
 }
@@ -39,6 +47,7 @@ async function load() {
     } finally {
         setBusy(false);
         controls.disabled = !loaded;
+        runtimeControls.disabled = !loaded;
     }
 }
 
@@ -50,23 +59,24 @@ for (const id of ['close-settings', 'done-settings']) $(id).addEventListener('cl
 dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
 dialog.addEventListener('close', () => $('open-settings').focus());
 $('retry-settings').addEventListener('click', load);
-controls.addEventListener('change', async event => {
-    const theme = event.target.value;
-    if (busy || theme === selectedTheme) return;
+async function savePreference(key, value) {
+    if (busy || value === selected[key]) return;
     setBusy(true);
     $('settings-error').hidden = true;
-    $('settings-status').textContent = 'Saving your theme…';
+    $('settings-status').textContent = key === 'theme' ? 'Saving your theme…' : 'Saving your app engine…';
     try {
-        const result = await window.settingsAPI.setTheme(theme);
+        const result = await window.settingsAPI[key === 'theme' ? 'setTheme' : 'setRuntime'](value);
         if (!result.ok) throw new Error(result.error);
         reflect(result.settings);
-        $('settings-status').textContent = 'Theme saved.';
+        $('settings-status').textContent = key === 'theme' ? 'Theme saved.' : 'App engine saved. Reopen Calendar to apply it.';
     } catch (error) {
-        reflect({ theme: selectedTheme });
+        reflect(selected);
         showError(error);
     } finally {
         setBusy(false);
-        controls.querySelector('input:checked')?.focus();
+        (key === 'theme' ? controls : runtimeControls).querySelector('input:checked')?.focus();
     }
-});
+}
+controls.addEventListener('change', event => savePreference('theme', event.target.value));
+runtimeControls.addEventListener('change', event => savePreference('runtime', event.target.value));
 window.settingsAPI?.onChanged(reflect);

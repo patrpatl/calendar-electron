@@ -1,6 +1,6 @@
 # Calendar
 
-An offline desktop calendar built with Electron, Vite, and Bootstrap 5.
+An offline desktop calendar built with Vite and Bootstrap 5, using Electron by default with an optional Windows system WebView.
 
 ## Run
 
@@ -10,7 +10,15 @@ Use Node.js 22.12 or newer. Install dependencies with `npm install`, then run:
 npm start
 ```
 
-Starting automatically builds the renderer before opening Electron, so source changes appear the next time you start the app. Use `npm run build` to rebuild `dist` separately. On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm.ps1`.
+Starting opens Electron by default, including for existing settings files without an engine preference. In **Settings → App engine**, choose **Electron** or **System WebView**. The choice is saved on this device and applies the next time you open Calendar; close the app completely and run `npm start` again. Theme changes preserve your engine choice.
+
+System WebView is available on Windows and uses the installed Microsoft Edge WebView2 runtime. If the native host cannot be built, the runtime is missing, initialization fails, the renderer crashes, or startup exceeds 15 seconds, the launcher closes the failed host and opens Electron automatically. The saved preference is retained. Other operating systems use Electron. Closing a working window exits normally.
+
+The renderer is built only when its source, build configuration, or dependency manifest changes; unchanged launches reuse `dist`. Use `npm run build` to rebuild it explicitly. On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm.ps1`.
+
+The first launch after choosing System WebView downloads the pinned Microsoft WebView2 SDK from NuGet and compiles the small native host using the Windows .NET Framework compiler. Later launches reuse the executable. Windows .NET Framework 4.8 and the Evergreen WebView2 runtime are required for the native host; a separate .NET SDK is unnecessary. You can prepare the host ahead of time with `npm run build:native`, or force Electron with `npm run start:electron` without changing the saved preference. No browser runtime is downloaded or installed by the app. See [Microsoft's WebView2 runtime documentation](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution).
+
+System WebView startup depends on the installed runtime, machine, and profile cache; switching browser hosts does not guarantee a faster launch. Set `CALENDAR_STARTUP_TRACE=1` to log native startup stages when diagnosing performance.
 
 ## Use
 
@@ -29,17 +37,17 @@ The Ore UI–inspired design uses squared panels, beveled buttons, and green acc
 
 Square scrollbar thumbs appear while scrolling and fade out after a short pause, without moving the content. The page uses an overlay thumb with no native scrollbar gutter. Scrolling supports the wheel, keyboard, touch, and thumb dragging. Reduced-motion preferences disable the fade; high-contrast mode keeps scrollbars visible.
 
-The background is translucent while text and controls stay opaque. Windows 11 22H2 and newer use native Acrylic; macOS uses vibrancy. Other systems use the transparent background without native blur. Reduced-transparency and high-contrast OS preferences take priority. The title bar remains draggable and keeps the native minimize, maximize, and close controls.
+The WebView host uses a standard Windows title bar and an opaque background, with native minimize, maximize, and close controls. The Electron host has a translucent background while text and controls stay opaque. Windows 11 22H2 and newer use native Acrylic; macOS uses vibrancy. Other systems use the transparent background without native blur. Reduced-transparency and high-contrast OS preferences take priority. Electron's custom title bar remains draggable and keeps the native window controls.
 
 ## Data
 
 Events are saved as versioned JSON in Electron's user data directory, normally `%APPDATA%\calendar\events.json` on Windows, `~/Library/Application Support/calendar/events.json` on macOS, or `~/.config/calendar/events.json` on Linux. Back up this file while the app is closed. To restore, close the app and replace it with a valid backup. Rebuilding `dist` does not affect events.
 
-Writes are serialized and replace the file through a temporary file. Unreadable or damaged files produce an error and are preserved. The renderer uses narrow calendar, settings, and Drive IPC methods and has no Node.js or filesystem access.
+Both hosts share the same events, settings, and encrypted Google connection. A Windows named-pipe lock prevents them from editing the same profile at the same time; launching again focuses the existing window. Writes are serialized and replace the file through a temporary file. Unreadable or damaged files produce an error and are preserved. The renderer uses narrow calendar, settings, and Drive messages and has no Node.js or filesystem access. The native host maps only the built renderer to an internal HTTPS origin; no local web server is used for the interface.
 
 ## Google Drive backups
 
-Google Drive is optional. The app connects directly to Google from Electron's main process; no hosted backend, API key, or continuously running server is needed. Sign-in uses your system browser, OAuth authorization code with S256 PKCE and state validation, and a temporary HTTP listener bound only to `127.0.0.1` on an OS-assigned port. The listener closes on completion, denial, cancellation, error, timeout, or app exit.
+Google Drive is optional. The app connects directly to Google from the Node backend or Electron's main process; no hosted backend, API key, or continuously running server is needed. Sign-in uses your system browser, OAuth authorization code with S256 PKCE and state validation, and a temporary HTTP listener bound only to `127.0.0.1` on an OS-assigned port. The listener closes on completion, denial, cancellation, error, timeout, or app exit.
 
 ### One-time Google setup
 
@@ -69,10 +77,12 @@ The encrypted connection is stored in `drive-auth.bin` beside `events.json`. It 
 npm test
 npm run build
 npm run test:smoke
+npm run test:smoke:webview
+npm run test:smoke:visible
 ```
 
 Tests cover date boundaries, leap years, event validation, searching, saving and reopening, concurrent writes, and damaged data preservation.
 
 Drive tests use real local loopback callbacks and simulated Google HTTP responses; no real Google account is used. They cover PKCE/state, listener cleanup, encrypted storage, token refresh/revocation, private uploads, failed requests, invalid/oversized downloads, and restore safety copies. Live Google OAuth and Drive access require your own Desktop client and account and are not verified by the automated suite.
 
-The smoke test runs Electron with a hidden window and a separate test profile under `.test-artifacts`. It exercises the real preload, IPC, persistence, editing, searching, deletion, and compact layout, and saves screenshots there for visual review. It does not access your normal calendar data.
+The Electron smoke test uses a hidden window and a separate test profile under `.test-artifacts`. It exercises the real preload, IPC, persistence, editing, searching, deletion, and compact layout, and saves screenshots there for visual review. The Windows WebView smoke test uses an offscreen test window and checks the native bridge, persistence, settings, window-close flushing, credential compatibility in both directions, cached builds, and automatic Electron fallback after a forced runtime initialization error. The Windows visibility test briefly opens a normal Calendar window and verifies that Windows reports it as visible and onscreen. These tests use separate profiles and do not access your normal calendar data.

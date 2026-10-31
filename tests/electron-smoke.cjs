@@ -90,6 +90,12 @@ async function run() {
     }
     console.log('PASS: Drive stays optional, unconfigured operations fail safely, and OS credential encryption round-trips.');
     assert.equal(await js("return document.querySelector('input[name=\"theme\"]:checked').value;"), 'system');
+    assert.equal(await js("return document.querySelector('input[name=\"runtime\"]:checked').value;"), 'electron');
+    if (process.platform === 'win32') {
+        await js("document.querySelector('input[name=\"runtime\"][value=\"webview\"]').click();");
+        await wait("!$('runtime-options').disabled", 'save System WebView preference');
+        assert.equal((await js('return window.settingsAPI.get();')).settings.runtime, 'webview');
+    }
     await js("document.querySelector('input[name=\"theme\"][value=\"dark\"]').click();");
     await wait("$('settings-status').textContent === 'Theme saved.' && !$('theme-options').disabled", 'save dark preference');
     assert.equal(nativeTheme.themeSource, 'dark');
@@ -101,6 +107,14 @@ async function run() {
     await js("$('open-settings').click();");
     await wait("!$('theme-options').disabled", 'reopen Settings');
     assert.equal(await js("return document.querySelector('input[name=\"theme\"]:checked').value;"), 'dark');
+    if (process.platform === 'win32') {
+        assert.equal(await js("return document.querySelector('input[name=\"runtime\"]:checked').value;"), 'webview');
+        await js("document.querySelector('input[name=\"runtime\"][value=\"electron\"]').click();");
+        await wait("!$('runtime-options').disabled", 'restore Electron preference');
+        assert.equal((await js('return window.settingsAPI.get();')).settings.theme, 'dark');
+        assert.equal(JSON.parse(await readFile(join(profile, 'settings.json'), 'utf8')).runtime, 'electron');
+        assert.equal((await js("return window.settingsAPI.setRuntime('invalid');")).ok, false);
+    }
     await js("document.querySelector('input[name=\"theme\"][value=\"light\"]').click();");
     await wait("$('settings-status').textContent === 'Theme saved.' && !$('theme-options').disabled", 'choose light');
     assert.equal(nativeTheme.themeSource, 'light');

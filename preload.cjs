@@ -18,8 +18,10 @@ contextBridge.exposeInMainWorld('calendarAPI', {
 });
 
 contextBridge.exposeInMainWorld('settingsAPI', {
+    supportsSystemWebView: process.platform === 'win32',
     get: () => ipcRenderer.invoke('settings:get'),
     setTheme: theme => ipcRenderer.invoke('settings:set-theme', theme),
+    setRuntime: runtime => ipcRenderer.invoke('settings:set-runtime', runtime),
     onChanged: callback => {
         const listener = (_event, settings) => callback(settings);
         ipcRenderer.on('settings:changed', listener);

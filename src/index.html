@@ -96,6 +96,15 @@
                     <label class="theme-choice"><input type="radio" name="theme" value="dark"><span class="theme-choice-content"><span class="theme-preview preview-dark" aria-hidden="true"><span></span></span><strong>Dark</strong><span>Easy on the eyes</span></span></label>
                 </div>
             </fieldset>
+            <fieldset id="runtime-options" class="runtime-settings" disabled>
+                <legend class="settings-legend">App engine</legend>
+                <p id="runtime-help" class="muted">Choose which engine opens Calendar. Changes apply the next time you open the app.</p>
+                <div class="runtime-options" aria-describedby="runtime-help">
+                    <label class="theme-choice"><input type="radio" name="runtime" value="electron" checked><span class="theme-choice-content"><strong>Electron</strong><span>Default</span></span></label>
+                    <label class="theme-choice"><input type="radio" name="runtime" value="webview"><span class="theme-choice-content"><strong>System WebView</strong><span>Use the Windows WebView2 runtime</span></span></label>
+                </div>
+                <p id="runtime-note" class="muted">System WebView falls back to Electron if it cannot start.</p>
+            </fieldset>
             <p id="settings-status" class="settings-status muted" role="status">Loading your preferences…</p>
             <div id="settings-error" class="form-error" role="alert" hidden><p id="settings-error-text"></p><button id="retry-settings" type="button" class="btn btn-sm">Try again</button></div>
             <section class="drive-settings" aria-labelledby="drive-heading">
