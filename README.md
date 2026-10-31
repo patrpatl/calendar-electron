@@ -1,6 +1,8 @@
 # Calendar
 
 An offline desktop calendar built with Electron, Vite, and Bootstrap 5.
+Inspired from Minecraft's OreUI.
+Not affiliated nor endorsed by Mojang AB or Microsoft.
 
 ## Run
 
