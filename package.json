@@ -1,0 +1,23 @@
+{
+  "name": "calendar",
+  "version": "1.0.0",
+  "description": "A calendar app.",
+  "license": "ISC",
+  "author": "patrpatl",
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:smoke": "npm run build && node tests/run-smoke.js",
+    "build": "vite build",
+    "prestart": "npm run build",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^45.1.0"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "vite": "^8.3.5"
+  }
+}

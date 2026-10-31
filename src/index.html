@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <meta name="color-scheme" content="light dark">
+    <title>Calendar</title>
+    <script type="module" src="./script.js"></script>
+</head>
+<body>
+    <div class="window-titlebar"><div class="window-titlebar-content"><span class="titlebar-mark" aria-hidden="true"></span><span>Calendar</span></div></div>
+    <div class="app-shell" id="page-content">
+        <header class="app-header">
+            <a class="brand" href="#" id="brand" aria-label="Calendar, go to today">
+                <span class="brand-icon" aria-hidden="true"><span id="brand-day"></span></span>
+                <span>Calendar<span class="brand-subtitle">A little space for your day.</span></span>
+            </a>
+            <div class="header-actions">
+                <button class="btn btn-outline-secondary" id="open-settings" type="button" aria-haspopup="dialog" aria-controls="settings-dialog">Settings</button>
+                <span class="local-badge"><span class="status-dot"></span><span id="storage-status">Loading your events…</span></span>
+                <button class="btn btn-primary" id="new-event" type="button" disabled><span aria-hidden="true">＋</span> New event</button>
+            </div>
+        </header>
+        <div class="workspace">
+            <main class="calendar-panel" aria-labelledby="month-heading">
+                <div class="calendar-toolbar">
+                    <div>
+                        <p class="eyebrow">MAKE ROOM FOR WHAT MATTERS</p>
+                        <h1 id="month-heading" aria-live="polite"></h1>
+                        <p class="month-summary" id="month-summary">Loading your calendar…</p>
+                    </div>
+                    <div class="month-controls">
+                        <button type="button" class="btn btn-outline-secondary" id="today">Today</button>
+                        <div class="arrow-controls">
+                            <button type="button" id="previous-month" class="icon-button" aria-label="Previous month">‹</button>
+                            <button type="button" id="next-month" class="icon-button" aria-label="Next month">›</button>
+                        </div>
+                        <label class="visually-hidden" for="month-picker">Jump to month</label>
+                        <input type="month" id="month-picker" class="form-control month-picker" min="1900-01" max="2100-12" aria-label="Jump to month">
+                    </div>
+                </div>
+                <div class="calendar-grid" role="grid" aria-labelledby="month-heading" aria-colcount="7" aria-rowcount="7">
+                    <div class="weekdays" role="row">
+                        <span role="columnheader" aria-label="Sunday">SUN</span><span role="columnheader" aria-label="Monday">MON</span>
+                        <span role="columnheader" aria-label="Tuesday">TUE</span><span role="columnheader" aria-label="Wednesday">WED</span>
+                        <span role="columnheader" aria-label="Thursday">THU</span><span role="columnheader" aria-label="Friday">FRI</span>
+                        <span role="columnheader" aria-label="Saturday">SAT</span>
+                    </div>
+                    <div id="calendar-days" role="rowgroup"></div>
+                </div>
+                <footer class="calendar-footer">
+                    <span><span class="legend-dot"></span> Today <span class="legend-selected"></span> Selected day</span>
+                    <span>Click a day to plan · Double-click to add</span>
+                </footer>
+            </main>
+            <aside class="agenda-panel" aria-label="Your schedule">
+                <div class="search-field">
+                    <span aria-hidden="true">⌕</span>
+                    <label class="visually-hidden" for="search">Search all events</label>
+                    <input id="search" type="search" placeholder="Search your events" autocomplete="off" maxlength="120">
+                </div>
+                <section id="day-section" aria-labelledby="selected-heading">
+                    <div class="section-heading"><p class="eyebrow" id="selected-weekday"></p><span id="day-count" class="count-badge"></span></div>
+                    <h2 id="selected-heading"></h2>
+                    <p id="selected-subtitle" class="muted"></p>
+                    <div id="day-events" class="event-list"></div>
+                    <button id="add-to-day" type="button" class="add-to-day" disabled>＋ Add an event</button>
+                    <section class="upcoming-section" aria-labelledby="upcoming-heading">
+                        <div class="section-heading"><h3 id="upcoming-heading">Coming up</h3><span class="muted small">Next on your calendar</span></div>
+                        <div id="upcoming-events" class="event-list"></div>
+                    </section>
+                </section>
+                <section id="search-section" aria-labelledby="search-heading" hidden>
+                    <p class="eyebrow">FIND A MOMENT</p>
+                    <h2 id="search-heading">Search results</h2>
+                    <p id="search-summary" class="muted" role="status"></p>
+                    <div id="search-results" class="event-list"></div>
+                </section>
+                <div class="sidebar-note"><span aria-hidden="true">✦</span><p>A clear calendar.<br>A little more peace of mind.</p></div>
+            </aside>
+        </div>
+        <div id="app-error" class="app-error" role="alert" hidden><span id="app-error-text"></span> <button id="retry-load" type="button" class="btn btn-sm btn-outline-danger">Try again</button></div>
+        <div id="announcement" class="visually-hidden" role="status" aria-live="polite"></div>
+        <div id="toast" class="save-toast" role="status" hidden></div>
+    </div>
+    <dialog id="settings-dialog" aria-labelledby="settings-heading">
+        <div class="dialog-header"><div><p class="eyebrow">MAKE IT YOURS</p><h2 id="settings-heading">Settings</h2></div><button id="close-settings" type="button" class="icon-button" aria-label="Close settings">&times;</button></div>
+        <div class="dialog-body settings-body">
+            <fieldset id="theme-options" disabled>
+                <legend class="settings-legend">Theme</legend>
+                <p id="theme-help" class="muted">Choose your look, or follow your operating system.</p>
+                <div class="theme-options" aria-describedby="theme-help">
+                    <label class="theme-choice"><input type="radio" name="theme" value="system" checked><span class="theme-choice-content"><span class="theme-preview preview-system" aria-hidden="true"><span></span></span><strong>System</strong><span>Follow your OS</span></span></label>
+                    <label class="theme-choice"><input type="radio" name="theme" value="light"><span class="theme-choice-content"><span class="theme-preview preview-light" aria-hidden="true"><span></span></span><strong>Light</strong><span>A brighter view</span></span></label>
+                    <label class="theme-choice"><input type="radio" name="theme" value="dark"><span class="theme-choice-content"><span class="theme-preview preview-dark" aria-hidden="true"><span></span></span><strong>Dark</strong><span>Easy on the eyes</span></span></label>
+                </div>
+            </fieldset>
+            <p id="settings-status" class="settings-status muted" role="status">Loading your preferences…</p>
+            <div id="settings-error" class="form-error" role="alert" hidden><p id="settings-error-text"></p><button id="retry-settings" type="button" class="btn btn-sm">Try again</button></div>
+            <section class="drive-settings" aria-labelledby="drive-heading">
+                <div class="section-heading"><h3 id="drive-heading">Google Drive</h3><span id="drive-badge" class="count-badge">Optional</span></div>
+                <p class="muted">Back up your events to this app's private space in Drive. Your calendar always works offline.</p>
+                <p id="drive-account" class="drive-account" hidden></p>
+                <div class="drive-actions">
+                    <button id="drive-import" class="btn btn-sm" type="button" disabled>Import OAuth JSON</button>
+                    <button id="drive-connect" class="btn btn-sm btn-primary" type="button" disabled>Connect Google Drive</button>
+                    <button id="drive-cancel" class="btn btn-sm" type="button" hidden>Cancel sign-in</button>
+                </div>
+                <div class="drive-actions" id="drive-backup-actions" hidden>
+                    <button id="drive-upload" class="btn btn-sm btn-primary" type="button">Upload new backup</button>
+                    <button id="drive-restore" class="btn btn-sm" type="button">Restore latest backup</button>
+                    <button id="drive-disconnect" class="delete-button" type="button">Disconnect</button>
+                </div>
+                <p id="drive-status" class="muted drive-status" role="status">Checking connection…</p>
+                <p id="drive-error" class="form-error" role="alert" hidden></p>
+                <button id="drive-retry" class="btn btn-sm" type="button" hidden>Retry connection check</button>
+                <details class="drive-help"><summary>First-time setup</summary><p>Create a Google Cloud project, enable Google Drive API, configure OAuth consent, and create a Desktop app OAuth client. Download its JSON and import it here.</p><p>If your OAuth app is in testing, add your Google account as a test user. Use the same Google Cloud project on your other devices.</p><p>Sign-in opens your browser and a temporary localhost callback. Backups contain events, are not visible in My Drive, and are uploaded only when you choose. Restoring replaces local events after confirmation and saves a local safety copy.</p></details>
+            </section>
+        </div>
+        <div class="dialog-footer"><span class="muted">Saved on this device</span><button id="done-settings" type="button" class="btn btn-primary">Done</button></div>
+    </dialog>
+    <dialog id="event-dialog" aria-labelledby="dialog-heading">
+        <form id="event-form">
+            <div class="dialog-header"><div><p class="eyebrow">A MOMENT ON YOUR CALENDAR</p><h2 id="dialog-heading">New event</h2></div><button id="close-dialog" type="button" class="icon-button" aria-label="Close event editor">×</button></div>
+            <div class="dialog-body">
+                <label for="event-title" class="form-label">Event name</label>
+                <input id="event-title" name="title" class="form-control" placeholder="What’s the plan?" maxlength="120" required autocomplete="off">
+                <label for="event-date" class="form-label">Date</label>
+                <input id="event-date" name="date" type="date" class="form-control" min="1900-01-01" max="2100-12-31" required>
+                <div class="form-check form-switch all-day-switch"><input id="event-all-day" name="allDay" class="form-check-input" type="checkbox" checked><label for="event-all-day" class="form-check-label">All day</label></div>
+                <div id="time-fields" class="time-fields" hidden>
+                    <div><label for="event-start" class="form-label">Starts</label><input id="event-start" name="start" class="form-control" type="time"></div>
+                    <div><label for="event-end" class="form-label">Ends <span class="muted">(optional)</span></label><input id="event-end" name="end" class="form-control" type="time"></div>
+                </div>
+                <fieldset class="color-fieldset"><legend class="form-label">Color</legend><div class="color-options">
+                    <label class="color-choice" data-color="teal"><input type="radio" name="color" value="teal" checked><span>Teal</span></label>
+                    <label class="color-choice" data-color="blue"><input type="radio" name="color" value="blue"><span>Blue</span></label>
+                    <label class="color-choice" data-color="violet"><input type="radio" name="color" value="violet"><span>Violet</span></label>
+                    <label class="color-choice" data-color="amber"><input type="radio" name="color" value="amber"><span>Amber</span></label>
+                    <label class="color-choice" data-color="rose"><input type="radio" name="color" value="rose"><span>Rose</span></label>
+                </div></fieldset>
+                <label for="event-notes" class="form-label">Notes <span class="muted">(optional)</span></label>
+                <textarea id="event-notes" name="notes" class="form-control" rows="3" maxlength="2000" placeholder="A place, a reminder, a little detail…"></textarea>
+                <p id="form-error" class="form-error" role="alert" hidden></p>
+                <div id="delete-confirmation" class="delete-confirmation" hidden><p>Delete this event? This cannot be undone.</p><button type="button" id="confirm-delete" class="btn btn-danger btn-sm">Delete event</button><button type="button" id="cancel-delete" class="btn btn-outline-secondary btn-sm">Keep event</button></div>
+            </div>
+            <div class="dialog-footer"><button type="button" id="delete-event" class="delete-button" hidden>Delete event</button><div class="dialog-footer-actions"><button type="button" id="cancel-event" class="btn btn-outline-secondary">Cancel</button><button type="submit" id="save-event" class="btn btn-primary">Save event</button></div></div>
+        </form>
+    </dialog>
+</body>
+</html>
